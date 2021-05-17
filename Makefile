@@ -2,7 +2,7 @@ CXX= g++
 CXXFLAGS= -std=c++11
 
 INCLUDE= -I/usr/include/SDL2 -I./include
-LIB= -lSDL2
+LIB= -lSDL2 -lSDL2_ttf -lSDL2_image
 
 SRCDIR= src
 OBJDIR= obj
