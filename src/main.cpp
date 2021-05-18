@@ -49,8 +49,10 @@ typedef struct AppData {
     int text_column_offset;
     SDL_Texture *help_text;
     SDL_Texture *recur_texture;
+    SDL_Texture *ust_texture;
     SDL_Rect recur_rect;
     SDL_Rect help_rect;
+    SDL_Rect ust_rect;
     bool recursion_switch;
 } AppData;
 
@@ -451,6 +453,14 @@ void static_init(SDL_Renderer *renderer, AppData *data_ptr){
     data_ptr->recur_rect.h = 100;
     data_ptr->recur_rect.w = 100;
     
+    SDL_Surface *ust_surf;
+    ust_surf = IMG_Load("resrc/images/UST.png");
+    data_ptr->help_text = SDL_CreateTextureFromSurface(renderer, help_surf);
+    SDL_FreeSurface(ust_surf);
+    data_ptr->help_rect.x = WIDTH - 115;
+    data_ptr->help_rect.y = HEIGHT - 98;
+    data_ptr->help_rect.w = 115;
+    data_ptr->help_rect.h = 98;
     
 }
 
