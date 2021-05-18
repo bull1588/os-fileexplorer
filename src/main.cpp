@@ -54,9 +54,10 @@ typedef struct AppData {
     bool recursion_switch;
 } AppData;
 
-void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int y_parent, int indentation);
+void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int parent_index, int parent_vect_index, int y_parent, int indentation);
 void static_init(SDL_Renderer *renderer, AppData *data_ptr);
-void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int indentation_mult, int parent_y);
+void startRecursion(SDL_Renderer *renderer, AppData *data_ptr, int root_index);
+void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index);
 void render(SDL_Renderer *renderer, AppData *dt);
 void updateFileList(std::vector<FileData> *files, std::string filepath);
 void fitFilesizeToUnit(FileData *file);
@@ -99,7 +100,7 @@ int main(int argc, char **argv)
     SDL_CreateWindowAndRenderer(WIDTH, HEIGHT, 0, &window, &renderer);
 
     // initialize and perform rendering loop
-    initialize(renderer, &dt, 0, 0, 0);
+    initialize(renderer, &dt, 0, 0, 0, 0, 0);
     static_init(renderer, &dt);
     render(renderer, &dt);
     SDL_Event event;
@@ -108,6 +109,7 @@ int main(int argc, char **argv)
     int rendercount = 0;
     while (event.type != SDL_QUIT)
     {
+
         //render(renderer);
         SDL_WaitEvent(&event);
         if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT){
@@ -131,25 +133,25 @@ int main(int argc, char **argv)
                         if(file.type == "directory"){
                             if(file.filename != ".."){
                                 dt.current_dir += "/" + file.filename;
-                                std::cout << dt.current_dir << '\n';
+                               //std::cout << dt.current_dir << '\n';
                                 updateFileList(&dt.file_entries[0], const_cast<char*>(dt.current_dir.c_str()));
-                                initialize(renderer, &dt, 0, 0, 0);
+                                initialize(renderer, &dt, 0, 0, 0, 0, 0);
                             } else {
-                                std::cout << "Going up." << '\n';
+                               //std::cout << "Going up." << '\n';
                                 size_t found = dt.current_dir.find_last_of("/");
                                 if(found != std::string::npos){
                                     dt.current_dir = dt.current_dir.substr(0, found); 
                                     if(dt.current_dir.empty()){
                                         dt.current_dir += "/";
                                     }
-                                    std::cout << dt.current_dir << '\n';
+                                   //std::cout << dt.current_dir << '\n';
                                 }
                                 updateFileList(&dt.file_entries[0], const_cast<char*>(dt.current_dir.c_str()));
-                                initialize(renderer, &dt, 0, 0, 0);
+                                initialize(renderer, &dt, 0, 0, 0, 0, 0);
                             }
                         } else {
-                            std::cout << "You clicked a file of type: " << file.type << '\n';
-                            std::cout << "Not ready yet!\n";
+                           //std::cout << "You clicked a file of type: " << file.type << '\n';
+                           //std::cout << "Not ready yet!\n";
                             int pid = fork();
                             if(pid == 0){ 
                                 std::string filepath = dt.current_dir + "/" + file.filename; 
@@ -167,10 +169,17 @@ int main(int argc, char **argv)
                 && x_clicked >= dt.recur_rect.x && x_clicked <= dt.recur_rect.x + dt.recur_rect.w ){
                     if(dt.recursion_switch){
                         dt.recursion_switch = false;
+                        dt.file_entries.clear();
+                        std::vector<FileData> nv;
+                        dt.file_entries.push_back(nv);
+                        updateFileList(&dt.file_entries[0], dt.current_dir);
+                        initialize(renderer, &dt, 0, 0, 0, 0, 0);
                     } else {
-                        dt.recursion_switch = true;
+                        dt.recursion_switch = true;   
+                        startRecursion(renderer, &dt, 0);                  
                     }
                 static_init(renderer, &dt);
+                std::cout << "caught recur switch?\n";
             }
 
         }
@@ -194,8 +203,9 @@ int main(int argc, char **argv)
             }
         }
         rendercount++;
-        //std::cout << rendercount << '\n';
+        //std::cout << "prerender" << '\n';
         render(renderer, &dt);
+        //std::cout << "postrender" << '\n';
     }
 
     // clean up
@@ -208,28 +218,33 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int y_parent, int indent)
+void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int parent_index, int parent_vect_index, int y_parent, int indent)
 {
     data_ptr->font = TTF_OpenFont("resrc/OpenSans-Regular.ttf", 20);
     SDL_Color color = { 0, 0, 0 };
     for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++) {
         
+        //std::cout << "Building text.\n";
         //name, create texture and init the x y w h
         const char* filename = data_ptr->file_entries[list_index][i].filename.c_str();
+        //std::cout << "  GOT FILENAME";
         SDL_Surface *text_surf = TTF_RenderText_Solid(data_ptr->font, filename, color);
         data_ptr->file_entries[list_index][i].text_texture = SDL_CreateTextureFromSurface(renderer, text_surf);
+        //std::cout << "  TEXTURE CREATED\n";
         SDL_FreeSurface(text_surf);
         data_ptr->file_entries[list_index][i].text_rect.x = 50 + indent;
         data_ptr->file_entries[list_index][i].text_rect.y = y_parent + (i * 24);
+        //std::cout << "XY ASSOC\n";
         SDL_Rect hold = data_ptr->file_entries[list_index][i].text_rect;
         SDL_QueryTexture(data_ptr->file_entries[list_index][i].text_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].text_rect.w), &(data_ptr->file_entries[list_index][i].text_rect.h));
-
+        //std::cout << "Built text.\n";
 
         if(data_ptr->file_entries[list_index][i].text_rect.w> data_ptr->text_column_offset){
-            std::cout << "UPDATE LARGEST WIDTH TO: " << data_ptr->file_entries[list_index][i].text_rect.w << '\n';
+            //std::cout << "UPDATE LARGEST WIDTH TO: " << data_ptr->file_entries[list_index][i].text_rect.w << '\n';
             data_ptr->text_column_offset = data_ptr->file_entries[list_index][i].text_rect.w;
         }
 
+       //std::cout << "Is text_column_offset a problem?\n";
         //icon, create texture and init the x y w h
         SDL_Surface *icon_surf;
         if (data_ptr->file_entries[list_index][i].type == "directory") {
@@ -245,46 +260,52 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int y
         }else if(data_ptr->file_entries[list_index][i].type == "other") {
             icon_surf = IMG_Load("resrc/images/oth.png");
         }
+
+       //std::cout << "Grabbed icon.\n";
+
         data_ptr->file_entries[list_index][i].icon_texture = SDL_CreateTextureFromSurface(renderer, icon_surf);
         SDL_FreeSurface(icon_surf);
         data_ptr->file_entries[list_index][i].icon_rect.x = 24 + indent;
         data_ptr->file_entries[list_index][i].icon_rect.y = y_parent + (i * 24);
         data_ptr->file_entries[list_index][i].icon_rect.w = 24;
         data_ptr->file_entries[list_index][i].icon_rect.h = 24;
-        //SDL_QueryTexture(data_ptr->file_entries[list_index][i].icon_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].icon_rect.w), &(data_ptr->file_entries[list_index][i].icon_rect.h));
+
+       std::cout << "Built icon rect.\n";
+       std::cout << "On loop " << i << " of " << data_ptr->file_entries[list_index].size() << '\n';
+       //SDL_QueryTexture(data_ptr->file_entries[list_index][i].icon_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].icon_rect.w), &(data_ptr->file_entries[list_index][i].icon_rect.h));
     }
 
-    std::cout << data_ptr->text_column_offset << '\n';
+    //std::cout << data_ptr->text_column_offset << '\n';
+
+    std::cout << "Heading into PERMS\n";
+    
 
     //handle permissions and sizes, if needed
-    for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++) { 
-        if (!(data_ptr->file_entries[list_index][i].type == "directory")) { //if it is a file, sizes
-            FileData cur = data_ptr->file_entries[list_index][i];
-            std::stringstream stream;
-            stream << data_ptr->file_entries[list_index][i].size;
-            std::string fsize = stream.str() + " " + cur.units;
-            
-            std::cout << "setting up perm prints for" << cur.filename << '\n';
-            std::cout << "  should read: " << fsize << "for size\n";
-            std::cout << "  should read" << cur.perms << "for perms\n";
-            std::cout << "OFFSET: " << data_ptr->text_column_offset << '\n';
+    if(!data_ptr->recursion_switch){
+        for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++) { 
+            if (!(data_ptr->file_entries[list_index][i].type == "directory")) { //if it is a file, sizes
+                FileData cur = data_ptr->file_entries[list_index][i];
+                std::stringstream stream;
+                stream << data_ptr->file_entries[list_index][i].size;
+                std::string fsize = stream.str() + " " + cur.units;
 
-            SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, fsize.c_str(), color);
-            data_ptr->file_entries[list_index][i].size_texture = SDL_CreateTextureFromSurface(renderer, size_surf);
-            SDL_FreeSurface(size_surf);
-            data_ptr->file_entries[list_index][i].size_rect.x = 100 + data_ptr->text_column_offset;
-            data_ptr->file_entries[list_index][i].size_rect.y = i * 24;
-            SDL_Rect hold = data_ptr->file_entries[list_index][i].size_rect;
-            SDL_QueryTexture(data_ptr->file_entries[list_index][i].size_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].size_rect.w), &(data_ptr->file_entries[list_index][i].size_rect.h));
+                SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, fsize.c_str(), color);
+                data_ptr->file_entries[list_index][i].size_texture = SDL_CreateTextureFromSurface(renderer, size_surf);
+                SDL_FreeSurface(size_surf);
+                data_ptr->file_entries[list_index][i].size_rect.x = 100 + data_ptr->text_column_offset;
+                data_ptr->file_entries[list_index][i].size_rect.y = i * 24;
+                SDL_Rect hold = data_ptr->file_entries[list_index][i].size_rect;
+                SDL_QueryTexture(data_ptr->file_entries[list_index][i].size_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].size_rect.w), &(data_ptr->file_entries[list_index][i].size_rect.h));
 
-            SDL_Surface *perm_surf = TTF_RenderText_Solid(data_ptr->font, cur.perms.c_str(), color);
-            data_ptr->file_entries[list_index][i].permissions_texture = SDL_CreateTextureFromSurface(renderer, perm_surf);
-            SDL_FreeSurface(perm_surf);
-            data_ptr->file_entries[list_index][i].permissions_rect.x = 250 + data_ptr->text_column_offset;
-            data_ptr->file_entries[list_index][i].permissions_rect.y = i * 24;
-            SDL_Rect permhold = data_ptr->file_entries[list_index][i].permissions_rect;
-            SDL_QueryTexture(data_ptr->file_entries[list_index][i].permissions_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].permissions_rect.w), &(data_ptr->file_entries[list_index][i].permissions_rect.h));
+                SDL_Surface *perm_surf = TTF_RenderText_Solid(data_ptr->font, cur.perms.c_str(), color);
+                data_ptr->file_entries[list_index][i].permissions_texture = SDL_CreateTextureFromSurface(renderer, perm_surf);
+                SDL_FreeSurface(perm_surf);
+                data_ptr->file_entries[list_index][i].permissions_rect.x = 250 + data_ptr->text_column_offset;
+                data_ptr->file_entries[list_index][i].permissions_rect.y = i * 24;
+                SDL_Rect permhold = data_ptr->file_entries[list_index][i].permissions_rect;
+                SDL_QueryTexture(data_ptr->file_entries[list_index][i].permissions_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].permissions_rect.w), &(data_ptr->file_entries[list_index][i].permissions_rect.h));
 
+            }
         }
     }
     data_ptr->text_column_offset = 0;
@@ -293,10 +314,95 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int y
     //SDL_SetRenderDrawColor(renderer, 235, 235, 235, 255);
 }
 
-void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int indentation_mult, int parent_y){ //loops through and initializes all folder vectors.
+void startRecursion(SDL_Renderer *renderer, AppData *data_ptr, int root_index){
+    //reevaluate vector based on current root!
+    
+    for(int i = 0; i < data_ptr->file_entries[root_index].size(); i++){ //ASSEMBLY LOOP
+        if(data_ptr->file_entries[root_index][i].type == "directory"){
+            std::cout << "directory is:  " << data_ptr->file_entries[root_index][i].filename << '\n';
+            std::vector<FileData> child;
+            std::string filepath = data_ptr->current_dir + "/" + data_ptr->file_entries[0][i].filename;
+            std::cout << "prep to update filelist\n";
+            updateFileList(&child, filepath);
+            data_ptr->file_entries.push_back(child);
+            std::cout << "Update and push to vector\n";
+            data_ptr->file_entries[root_index][i].child_index = data_ptr->file_entries.size() - 1; //for positioning on init. 
+        }
+    }
+
+    int indent = 24 * 4;
+    int y_parent = 50;
+    SDL_Color color = {0, 0, 0};
+
+    for(int i = 1; i < data_ptr->file_entries.size(); i++){
+        for(int j = 0; j < data_ptr->file_entries[i].size(); j++){
+            //std::cout << "Building text.\n";
+            //name, create texture and init the x y w h
+            const char* filename = data_ptr->file_entries[i][j].filename.c_str();
+            //std::cout << "  GOT FILENAME";
+            SDL_Surface *text_surf = TTF_RenderText_Solid(data_ptr->font, filename, color);
+            data_ptr->file_entries[i][j].text_texture = SDL_CreateTextureFromSurface(renderer, text_surf);
+            //std::cout << "  TEXTURE CREATED\n";
+            SDL_FreeSurface(text_surf);
+            data_ptr->file_entries[i][j].text_rect.x = 50 + indent;
+            data_ptr->file_entries[i][j].text_rect.y = y_parent + (i * 24);
+            //std::cout << "XY ASSOC\n";
+            SDL_Rect hold = data_ptr->file_entries[i][j].text_rect;
+            SDL_QueryTexture(data_ptr->file_entries[i][j].text_texture, NULL, NULL, &(data_ptr->file_entries[i][j].text_rect.w), &(data_ptr->file_entries[i][j].text_rect.h));
+            //std::cout << "Built text.\n";
+
+            if(data_ptr->file_entries[i][j].text_rect.w> data_ptr->text_column_offset){
+                //std::cout << "UPDATE LARGEST WIDTH TO: " << data_ptr->file_entries[i][j].text_rect.w << '\n';
+                data_ptr->text_column_offset = data_ptr->file_entries[i][j].text_rect.w;
+            }
+
+            //std::cout << "Is text_column_offset a problem?\n";
+            //icon, create texture and init the x y w h
+            SDL_Surface *icon_surf;
+            if (data_ptr->file_entries[i][j].type == "directory") {
+                icon_surf = IMG_Load("resrc/images/dir.png");
+            }else if(data_ptr->file_entries[i][j].type == "executable") {
+                icon_surf = IMG_Load("resrc/images/exe.png");
+            }else if(data_ptr->file_entries[i][j].type == "image") {
+                icon_surf = IMG_Load("resrc/images/img.png");
+            }else if(data_ptr->file_entries[i][j].type == "video") {
+                icon_surf = IMG_Load("resrc/images/vid.png");
+            }else if(data_ptr->file_entries[i][j].type == "code") {
+                icon_surf = IMG_Load("resrc/images/code.png");
+            }else if(data_ptr->file_entries[i][j].type == "other") {
+                icon_surf = IMG_Load("resrc/images/oth.png");
+            }
+
+            //std::cout << "Grabbed icon.\n";
+
+            data_ptr->file_entries[i][j].icon_texture = SDL_CreateTextureFromSurface(renderer, icon_surf);
+            SDL_FreeSurface(icon_surf);
+            data_ptr->file_entries[i][j].icon_rect.x = 24 + indent;
+            data_ptr->file_entries[i][j].icon_rect.y = y_parent + (i * 24);
+            data_ptr->file_entries[i][j].icon_rect.w = 24;
+            data_ptr->file_entries[i][j].icon_rect.h = 24;
+
+            std::cout << "Built icon rect.\n";
+            std::cout << "INSIDE RECUR: On loop " << i << " of " << data_ptr->file_entries[i].size() << '\n';
+            //SDL_QueryTexture(data_ptr->file_entries[list_index][i].icon_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].icon_rect.w), &(data_ptr->file_entries[list_index][i].icon_rect.h));
+        }
+
+     }
+     std::cout << "test\n";
+}
+    
+   
+
+
+
+void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index){ //loops through and initializes all folder vectors.
     //for each folder we find in our current directory, create a NEW std::vector<FileData>
     //Consider adding a field to FileData for directories called "child index";
     //list index indicates what directory we are expanding. This function runs repeatedly until list_index reaches the end of the populated dt vector.
+
+   std::cout << " RECURSION ASSEMBLY\n";
+    int startingsize = data_ptr->file_entries.size();
+
     for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++){ //ASSEMBLY LOOP
         if(data_ptr->file_entries[list_index][i].type == "directory"){
             std::vector<FileData> child;
@@ -306,13 +412,20 @@ void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index, in
             data_ptr->file_entries[0][i].child_index = data_ptr->file_entries.size() - 1; //for positioning on init. 
         }
     }
+   std::cout << "ASSEMBLED: " << data_ptr->file_entries.size() - startingsize << '\n';
+   std::cout << " RECURSION POPULATION GOAL: " << data_ptr->file_entries[list_index].size() << '\n';
 
-    for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++){ //POPULATION LOOP
-        if(data_ptr->file_entries[list_index][i].type == "directory"){
-            int indentation  = data_ptr->file_entries[list_index][i].icon_rect.x + 30; //increment indentation by 30 off parent.
-            initialize(renderer, data_ptr, data_ptr->file_entries[list_index][i].child_index, data_ptr->file_entries[list_index][i].icon_rect.y, indentation);
-        } 
-    }   
+ 
+
+    /*
+    int max_y_ext = data_ptr->file_entries[list_index].size() * 24; //# of FileData entries in this expand * entry height
+    if(data_ptr->recursion_switch){ //
+        for(int i = parent_index + 1; i < data_ptr->file_entries[parent_vect_index].size(); i++){ //starting at the parent FileData instance, increment all Y vals by max_y_ext.
+            data_ptr->file_entries[list_index][i].icon_rect.y += max_y_ext;
+            data_ptr->file_entries[list_index][i].text_rect.y += max_y_ext;
+        }
+    }
+    */
 }
 
 void static_init(SDL_Renderer *renderer, AppData *data_ptr){
@@ -356,16 +469,15 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
             //std::cout << "Icon Rect Pos: " << data_ptr->file_entries[i][j].icon_rect.x << " , " << data_ptr->file_entries[i][j].icon_rect.y << '\n';
             //std::cout << "Text Rect Pos: " << data_ptr->file_entries[i][j].icon_rect.x << " , " << data_ptr->file_entries[i][j].icon_rect.y << '\n';
             SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].icon_texture, NULL, &(data_ptr->file_entries[i][j].icon_rect));
-
-            //SDL_Rect rect = data_ptr->file_entries[i][j].text_rect;
+            //std::cout << "NOT caught at icon\n";
             SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].text_texture, NULL, &(data_ptr->file_entries[i][j].text_rect));
-
-            if(data_ptr->file_entries[i][j].type != "directory"){
-                //std::cout << "Rendering size & perms for: " << data_ptr->file_entries[i][j].filename << '\n';
+            //std::cout << "NOT caught at text\n";
+            if(data_ptr->file_entries[i][j].type != "directory" && !data_ptr->recursion_switch){
                 SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].size_texture, NULL, &(data_ptr->file_entries[i][j].size_rect));
+                //std::cout << "NOT caught at size\n";
+                //std::cout << "PERMS NEXT: " << data_ptr->file_entries[i][j].perms << '\n';
                 SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].permissions_texture, NULL, &(data_ptr->file_entries[i][j].permissions_rect));
-                //std::cout << SDL_GetError() << '\n';
-                //SDL_ClearError();
+                //std::cout << "NOT caught at perms\n";
             }
             
         }
@@ -397,11 +509,11 @@ void updateFileList(std::vector<FileData> *files, std::string filepath){ //calle
                 struct stat filestats;
 
                 std::string fpath = (filepath + "/" + entry->d_name);
-                std::cout << fpath << '\n';
+               //std::cout << fpath << '\n';
                 stat(fpath.c_str(), &filestats); //get more detailed information on the file.
 
                 file.size = filestats.st_size;
-                std::cout << "Size: " << filestats.st_size << '\n';
+               //std::cout << "Size: " << filestats.st_size << '\n';
                 fitFilesizeToUnit(&file);
                 setFilePermField(&file, &filestats);
                 convertToUsableType(&file);
@@ -416,7 +528,7 @@ void updateFileList(std::vector<FileData> *files, std::string filepath){ //calle
                     files->push_back(folder); //add folder w/name & type into list
                 }
             } else {
-                std::cout << "dirent found unknown filetype.\n";
+               //std::cout << "dirent found unknown filetype.\n";
             }
         }
     }
@@ -438,7 +550,7 @@ void fitFilesizeToUnit(FileData *file){
         file->units  = "B";
     }
     file->size = trunc(file->size);
-    std::cout << trunc(file->size) << '\n';
+   //std::cout << trunc(file->size) << '\n';
 }
 
 void setFilePermField(FileData *file, struct stat *filestats){
