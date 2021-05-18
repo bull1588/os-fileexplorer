@@ -181,7 +181,7 @@ int main(int argc, char **argv)
                         startRecursion(renderer, &dt, 0);                  
                     }
                 static_init(renderer, &dt);
-                std::cout << "caught recur switch?\n";
+               //std::co << "caught recur switch?\n";
             }
 
         }
@@ -272,14 +272,14 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr, int list_index, int p
         data_ptr->file_entries[list_index][i].icon_rect.w = 24;
         data_ptr->file_entries[list_index][i].icon_rect.h = 24;
 
-       std::cout << "Built icon rect.\n";
-       std::cout << "On loop " << i << " of " << data_ptr->file_entries[list_index].size() << '\n';
+      //std::co << "Built icon rect.\n";
+      //std::co << "On loop " << i << " of " << data_ptr->file_entries[list_index].size() << '\n';
        //SDL_QueryTexture(data_ptr->file_entries[list_index][i].icon_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].icon_rect.w), &(data_ptr->file_entries[list_index][i].icon_rect.h));
     }
 
     //std::cout << data_ptr->text_column_offset << '\n';
 
-    std::cout << "Heading into PERMS\n";
+   //std::co << "Heading into PERMS\n";
     
 
     //handle permissions and sizes, if needed
@@ -321,13 +321,13 @@ void startRecursion(SDL_Renderer *renderer, AppData *data_ptr, int root_index){
     
     for(int i = 0; i < data_ptr->file_entries[root_index].size(); i++){ //ASSEMBLY LOOP
         if(data_ptr->file_entries[root_index][i].type == "directory"){
-            std::cout << "directory is:  " << data_ptr->file_entries[root_index][i].filename << '\n';
+           //std::co << "directory is:  " << data_ptr->file_entries[root_index][i].filename << '\n';
             std::vector<FileData> child;
             std::string filepath = data_ptr->current_dir + "/" + data_ptr->file_entries[0][i].filename;
-            std::cout << "prep to update filelist\n";
+           //std::co << "prep to update filelist\n";
             updateFileList(&child, filepath);
             data_ptr->file_entries.push_back(child);
-            std::cout << "Update and push to vector\n";
+           //std::co << "Update and push to vector\n";
             data_ptr->file_entries[root_index][i].child_index = data_ptr->file_entries.size() - 1; //for positioning on init. 
         }
     }
@@ -384,13 +384,13 @@ void startRecursion(SDL_Renderer *renderer, AppData *data_ptr, int root_index){
             data_ptr->file_entries[i][j].icon_rect.w = 24;
             data_ptr->file_entries[i][j].icon_rect.h = 24;
 
-            std::cout << "Built icon rect.\n";
-            std::cout << "INSIDE RECUR: On loop " << i << " of " << data_ptr->file_entries[i].size() << '\n';
+           //std::co << "Built icon rect.\n";
+           //std::co << "INSIDE RECUR: On loop " << i << " of " << data_ptr->file_entries[i].size() << '\n';
             //SDL_QueryTexture(data_ptr->file_entries[list_index][i].icon_texture, NULL, NULL, &(data_ptr->file_entries[list_index][i].icon_rect.w), &(data_ptr->file_entries[list_index][i].icon_rect.h));
         }
 
      }
-     std::cout << "test\n";
+    //std::co << "test\n";
 }
     
    
@@ -402,7 +402,7 @@ void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index){ /
     //Consider adding a field to FileData for directories called "child index";
     //list index indicates what directory we are expanding. This function runs repeatedly until list_index reaches the end of the populated dt vector.
 
-   std::cout << " RECURSION ASSEMBLY\n";
+  //std::co << " RECURSION ASSEMBLY\n";
     int startingsize = data_ptr->file_entries.size();
 
     for(int i = 0; i < data_ptr->file_entries[list_index].size(); i++){ //ASSEMBLY LOOP
@@ -414,8 +414,8 @@ void recursiveInit(SDL_Renderer *renderer, AppData *data_ptr, int list_index){ /
             data_ptr->file_entries[0][i].child_index = data_ptr->file_entries.size() - 1; //for positioning on init. 
         }
     }
-   std::cout << "ASSEMBLED: " << data_ptr->file_entries.size() - startingsize << '\n';
-   std::cout << " RECURSION POPULATION GOAL: " << data_ptr->file_entries[list_index].size() << '\n';
+  //std::co << "ASSEMBLED: " << data_ptr->file_entries.size() - startingsize << '\n';
+  //std::co << " RECURSION POPULATION GOAL: " << data_ptr->file_entries[list_index].size() << '\n';
 
  
 
@@ -455,13 +455,12 @@ void static_init(SDL_Renderer *renderer, AppData *data_ptr){
     
     SDL_Surface *ust_surf;
     ust_surf = IMG_Load("resrc/images/UST.png");
-    data_ptr->help_text = SDL_CreateTextureFromSurface(renderer, help_surf);
+    data_ptr->ust_texture = SDL_CreateTextureFromSurface(renderer, ust_surf);
     SDL_FreeSurface(ust_surf);
-    data_ptr->help_rect.x = WIDTH - 115;
-    data_ptr->help_rect.y = HEIGHT - 98;
-    data_ptr->help_rect.w = 115;
-    data_ptr->help_rect.h = 98;
-    
+    data_ptr->ust_rect.x = WIDTH - 115;
+    data_ptr->ust_rect.y = HEIGHT - 98;
+    data_ptr->ust_rect.w = 115;
+    data_ptr->ust_rect.h = 98;
 }
 
 void render(SDL_Renderer *renderer, AppData *data_ptr)
@@ -471,7 +470,7 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_RenderClear(renderer);
     
     // TODO: draw!
-    //std::cout << "Writing " << data_ptr->file_entries.size() << " entries to screen\n";
+    ////std::cout << "Writing " << data_ptr->file_entries.size() << " entries to screen\n";
     for (int i=0; i<data_ptr->file_entries.size(); i++) {
         for (int j=0; j<data_ptr->file_entries[i].size(); j++) {
             //std::cout << "Filename: " << data_ptr->file_entries[i][j].filename << '\n';
@@ -479,7 +478,7 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
             //std::cout << "Icon Rect Pos: " << data_ptr->file_entries[i][j].icon_rect.x << " , " << data_ptr->file_entries[i][j].icon_rect.y << '\n';
             //std::cout << "Text Rect Pos: " << data_ptr->file_entries[i][j].icon_rect.x << " , " << data_ptr->file_entries[i][j].icon_rect.y << '\n';
             SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].icon_texture, NULL, &(data_ptr->file_entries[i][j].icon_rect));
-            //std::cout << "NOT caught at icon\n";
+            ////std::cout << "NOT caught at icon\n";
             SDL_RenderCopy(renderer, data_ptr->file_entries[i][j].text_texture, NULL, &(data_ptr->file_entries[i][j].text_rect));
             //std::cout << "NOT caught at text\n";
             if(data_ptr->file_entries[i][j].type != "directory" && !data_ptr->recursion_switch){
