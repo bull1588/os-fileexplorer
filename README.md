@@ -13,6 +13,8 @@ The program is run through 'src/main.cpp'. Here, graphical compnents are initial
 - launching of files, if there is a default application for launch already set up on the device.
 
 ## Development Obstacles
-
+Recursion was not fully implemented.
+- Displaying first-depth folders works fine (but detecting clicks does not)
+- Attempting to read through and populate deeper folders led to many segfaults and logical errors that we unfortunately did not have time to correct.
 
 
